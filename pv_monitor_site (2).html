@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>☀️ Surveillance PV – Uccle</title>
+<meta name="description" content="Dashboard PV Uccle – 8.8 kWp">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--sun:#FFB800;--deep:#0A0E1A;--panel:#111827;--text:#F0E6D0;--muted:#8896aa;--ne:#38BDF8;--so:#FF6B00;--green:#34D399;--red:#F87171;--border:rgba(255,255,255,0.07)}
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:16px}
+body{background:var(--deep);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;top:-150px;left:50%;transform:translateX(-50%);width:800px;height:800px;background:radial-gradient(circle,rgba(255,184,0,0.06) 0%,transparent 68%);pointer-events:none;z-index:0}
+
+header{position:relative;z-index:1;padding:1.8rem 2.5rem 1.2rem;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid rgba(255,184,0,0.12)}
+.logo h1{font-size:1.9rem;font-weight:800;letter-spacing:-0.03em;color:var(--sun)}
+.logo h1 span{color:var(--text)}
+.logo p{font-family:'Space Mono',monospace;font-size:0.68rem;color:var(--muted);margin-top:3px;letter-spacing:0.1em}
+.hdr-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.live-badge{display:flex;align-items:center;gap:8px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.3);border-radius:100px;padding:5px 14px;font-family:'Space Mono',monospace;font-size:0.62rem;color:var(--green);letter-spacing:0.08em}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 1.8s infinite}
+@keyframes blink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.3;transform:scale(0.65)}}
+.refresh-btn{font-family:'Space Mono',monospace;font-size:0.6rem;color:var(--muted);background:transparent;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:4px 10px;cursor:pointer;transition:all 0.15s}
+.refresh-btn:hover{color:var(--sun);border-color:rgba(255,184,0,0.4)}
+
+.container{position:relative;z-index:1;max-width:1240px;margin:0 auto;padding:1.5rem 2.5rem 4rem}
+
+.status-bar{display:none;align-items:center;gap:12px;border-radius:12px;padding:.9rem 1.2rem;margin-bottom:1rem;font-family:'Space Mono',monospace;font-size:0.68rem}
+.status-bar.loading{display:flex;background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.25);color:var(--ne)}
+.status-bar.error{display:flex;background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.3);color:var(--red)}
+.spinner{width:16px;height:16px;flex-shrink:0;border:2px solid rgba(56,189,248,0.2);border-top-color:var(--ne);border-radius:50%;animation:spin 0.7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.alert-banner{display:none;align-items:center;gap:14px;background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.3);border-radius:14px;padding:1rem 1.4rem;margin-bottom:1rem}
+.alert-banner.visible{display:flex;animation:popIn 0.4s cubic-bezier(.175,.885,.32,1.275)}
+@keyframes popIn{from{opacity:0;transform:translateY(-6px) scale(0.98)}to{opacity:1;transform:none}}
+.alert-icon{font-size:1.6rem;flex-shrink:0}
+.alert-body{flex:1}
+.alert-body strong{display:block;color:var(--red);font-size:.85rem;margin-bottom:2px}
+.alert-body span{font-family:'Space Mono',monospace;font-size:.62rem;color:#fca5a5}
+.alert-pct{font-family:'Space Mono',monospace;font-size:1.5rem;font-weight:700;color:var(--red)}
+
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1rem}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:1.2rem 1.4rem;position:relative;overflow:hidden;transition:transform .18s,border-color .18s}
+.kpi:hover{transform:translateY(-2px);border-color:rgba(255,184,0,.22)}
+.kpi::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;border-radius:0 0 16px 16px}
+.kpi.ct::after{background:var(--sun)}.kpi.cn::after{background:var(--ne)}.kpi.cs::after{background:var(--so)}.kpi.cd::after{background:var(--green)}
+.kpi-label{font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.5rem}
+.kpi-value{font-size:2rem;font-weight:800;letter-spacing:-.03em;line-height:1}
+.kpi-unit{font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);margin-top:4px}
+.kpi.ct .kpi-value{color:var(--sun)}.kpi.cn .kpi-value{color:var(--ne)}.kpi.cs .kpi-value{color:var(--so)}.kpi.cd .kpi-value{color:var(--green)}
+
+.main-grid{display:grid;grid-template-columns:2fr 1fr;gap:1rem;margin-bottom:1rem}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:1.4rem}
+.card-title{font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1rem}
+
+/* ── SVG Chart ── */
+.chart-outer{width:100%;overflow:hidden}
+#svgChart{width:100%;display:block}
+.chart-legend{display:flex;gap:1.2rem;margin-top:.6rem;flex-wrap:wrap}
+.chart-legend span{display:flex;align-items:center;gap:5px;font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted)}
+.leg-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+
+.cbar-wrap{margin-top:1rem}
+.cbar-labels{display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);margin-bottom:5px}
+.cbar-track{height:6px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden}
+.cbar-fill{height:100%;background:linear-gradient(90deg,var(--ne),var(--sun));border-radius:99px;transition:width .7s ease}
+
+.compass-wrap{display:flex;flex-direction:column;align-items:center;gap:1rem}
+.compass{width:175px;height:175px}
+.compass svg{width:100%;height:100%}
+.field-list{display:flex;flex-direction:column;gap:8px;width:100%}
+.field-item{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.04);border-radius:10px;padding:8px 12px}
+.fn{font-size:.82rem;font-weight:600}.ne .fn{color:var(--ne)}.so .fn{color:var(--so)}
+.fi{font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);text-align:right}
+.pr-labels{display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);margin-bottom:5px;width:100%}
+
+.bilan-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+.bilan-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.bilan-row:last-child{border-bottom:none}
+.bl{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted)}
+.bv{font-weight:700;font-size:.95rem}
+.bv.pos{color:var(--green)}.bv.neg{color:var(--red)}.bv.neu{color:var(--sun)}
+
+.donut-wrap{display:flex;flex-direction:column;align-items:center;gap:.7rem}
+.donut-svg{width:145px;height:145px}
+.donut-legend{display:flex;gap:1rem;font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted)}
+.donut-legend span{display:flex;align-items:center;gap:5px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.donut-note{font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);text-align:center}
+
+.section-title{font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.8rem;margin-top:.5rem}
+.daily-row{display:grid;grid-template-columns:repeat(7,1fr);gap:.7rem}
+.day-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:1rem .6rem;text-align:center;transition:transform .18s,border-color .18s}
+.day-card:hover{transform:translateY(-3px);border-color:rgba(255,184,0,.28)}
+.day-card.today{border-color:rgba(255,184,0,.38);background:rgba(255,184,0,.06)}
+.day-card.bad{border-color:rgba(248,113,113,.35)}
+.dn{font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:.07em;margin-bottom:.4rem}
+.day-card.today .dn{color:var(--sun)}
+.di{font-size:1.5rem;margin:4px 0}
+.dv{font-size:1.1rem;font-weight:800;color:var(--sun);line-height:1}
+.dv.bad{color:var(--red)}
+.ds{font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);margin-top:3px}
+
+.footer-note{margin-top:2.5rem;padding-top:1.2rem;border-top:1px solid rgba(255,255,255,.05);font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);text-align:center;line-height:1.8}
+.footer-note a{color:var(--ne);text-decoration:none}
+
+@media(max-width:900px){.kpi-row{grid-template-columns:repeat(2,1fr)}.main-grid,.bilan-grid{grid-template-columns:1fr}.daily-row{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:580px){.container{padding:1rem 1rem 3rem}header{padding:1.2rem 1rem;flex-direction:column;gap:.8rem}.hdr-right{align-items:flex-start}.daily-row{grid-template-columns:repeat(2,1fr)}.kpi-value{font-size:1.6rem}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <h1>☀️ PV<span>Monitor</span></h1>
+    <p>UCCLE · 50.85°N 4.35°E · TOIT NE 2.4 KWP + TOIT SO 6.4 KWP</p>
+  </div>
+  <div class="hdr-right">
+    <div class="live-badge"><div class="live-dot"></div><span id="lastUpdate">Chargement…</span></div>
+    <button class="refresh-btn" onclick="loadData()">↺ Actualiser</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <div id="statusBar" class="status-bar loading">
+    <div class="spinner"></div>
+    <span id="statusMsg">Connexion à Open-Meteo…</span>
+  </div>
+
+  <div id="alertBanner" class="alert-banner">
+    <div class="alert-icon">⚠️</div>
+    <div class="alert-body">
+      <strong>Sous-performance détectée</strong>
+      <span id="alertMsg"></span>
+    </div>
+    <div class="alert-pct" id="alertPct"></div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi ct"><div class="kpi-label">Puissance actuelle</div><div class="kpi-value" id="kpiNow">–</div><div class="kpi-unit">kW · installation totale</div></div>
+    <div class="kpi cn"><div class="kpi-label">Toit NE · 2.4 kWp</div><div class="kpi-value" id="kpiNE">–</div><div class="kpi-unit">kW · azimut 62°</div></div>
+    <div class="kpi cs"><div class="kpi-label">Toit SO · 6.4 kWp</div><div class="kpi-value" id="kpiSO">–</div><div class="kpi-unit">kW · azimut 242°</div></div>
+    <div class="kpi cd"><div class="kpi-label">Production aujourd'hui</div><div class="kpi-value" id="kpiDay">–</div><div class="kpi-unit">kWh · prévision journée</div></div>
+  </div>
+
+  <div class="main-grid">
+    <div class="card">
+      <div class="card-title">⚡ Production horaire – Aujourd'hui (kW)</div>
+      <div class="chart-outer">
+        <svg id="svgChart" height="220" viewBox="0 0 700 220" preserveAspectRatio="none"></svg>
+      </div>
+      <div class="chart-legend">
+        <span><i class="leg-dot" style="background:rgba(56,189,248,0.7)"></i>Toit NE</span>
+        <span><i class="leg-dot" style="background:rgba(255,107,0,0.7)"></i>Toit SO</span>
+        <span><i class="leg-dot" style="background:#FFB800;height:3px;border-radius:2px"></i>Total</span>
+      </div>
+      <div class="cbar-wrap">
+        <div class="cbar-labels"><span>☁️ Couverture nuageuse actuelle</span><span id="cloudPct">–</span></div>
+        <div class="cbar-track"><div class="cbar-fill" id="cloudFill" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🧭 Orientation des toitures</div>
+      <div class="compass-wrap">
+        <div class="compass">
+          <svg viewBox="0 0 200 200">
+            <circle cx="100" cy="100" r="92" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+            <circle cx="100" cy="100" r="68" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+            <text x="100" y="14"  text-anchor="middle" fill="#8896aa" font-size="11" font-family="Space Mono">N</text>
+            <text x="190" y="104" text-anchor="middle" fill="#8896aa" font-size="11" font-family="Space Mono">E</text>
+            <text x="100" y="196" text-anchor="middle" fill="#8896aa" font-size="11" font-family="Space Mono">S</text>
+            <text x="10"  y="104" text-anchor="middle" fill="#8896aa" font-size="11" font-family="Space Mono">O</text>
+            <line x1="100" y1="8"   x2="100" y2="20"  stroke="rgba(255,255,255,0.15)" stroke-width="1.5"/>
+            <line x1="100" y1="180" x2="100" y2="192" stroke="rgba(255,255,255,0.15)" stroke-width="1.5"/>
+            <line x1="8"   y1="100" x2="20"  y2="100" stroke="rgba(255,255,255,0.15)" stroke-width="1.5"/>
+            <line x1="180" y1="100" x2="192" y2="100" stroke="rgba(255,255,255,0.15)" stroke-width="1.5"/>
+            <line x1="100" y1="100" x2="132" y2="29" stroke="#38BDF8" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>
+            <circle cx="132" cy="29" r="9" fill="#38BDF8" opacity="0.8"/>
+            <text x="148" y="23" fill="#38BDF8" font-size="9" font-family="Space Mono">NE</text>
+            <line x1="100" y1="100" x2="67" y2="171" stroke="#FF6B00" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>
+            <circle cx="67" cy="171" r="11" fill="#FF6B00" opacity="0.8"/>
+            <text x="28"  y="181" fill="#FF6B00" font-size="9" font-family="Space Mono">SO</text>
+            <circle cx="100" cy="100" r="4" fill="rgba(255,255,255,0.25)"/>
+          </svg>
+        </div>
+        <div class="field-list">
+          <div class="field-item ne"><div class="fn">Toit NE</div><div class="fi"><div>62° · incl. 37°</div><div>2.4 kWp</div></div></div>
+          <div class="field-item so"><div class="fn">Toit SO</div><div class="fi"><div>242° · incl. 37°</div><div>6.4 kWp</div></div></div>
+        </div>
+        <div style="width:100%">
+          <div class="pr-labels"><span>Performance Ratio (PR)</span><span style="color:var(--sun)">75 %</span></div>
+          <div class="cbar-track"><div class="cbar-fill" style="width:75%;background:linear-gradient(90deg,var(--sun),var(--green))"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bilan-grid">
+    <div class="card">
+      <div class="card-title">⚡ Bilan Énergie – Aujourd'hui</div>
+      <div class="bilan-row"><span class="bl">☀️ PRODUCTION ESTIMÉE</span>    <span class="bv neu" id="bilanProd">–</span></div>
+      <div class="bilan-row"><span class="bl">🏠 CONSOMMATION MOYENNE</span>   <span class="bv" style="color:var(--muted)">10.0 kWh</span></div>
+      <div class="bilan-row"><span class="bl">📤 SURPLUS / DÉFICIT</span>      <span class="bv" id="bilanSurplus">–</span></div>
+      <div class="bilan-row"><span class="bl">📊 TAUX AUTO-CONSOMMATION</span> <span class="bv" id="bilanRatio">–</span></div>
+      <div class="bilan-row"><span class="bl">💶 ÉCONOMIE ESTIMÉE</span>       <span class="bv pos" id="bilanEco">–</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🍩 Production vs Consommation</div>
+      <div class="donut-wrap">
+        <svg class="donut-svg" viewBox="0 0 140 140">
+          <circle cx="70" cy="70" r="50" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="18"/>
+          <circle cx="70" cy="70" r="50" fill="none" stroke="#34D399" stroke-width="18"
+            stroke-dasharray="314" stroke-dashoffset="314" stroke-linecap="round"
+            transform="rotate(-90 70 70)" id="donutArc" style="transition:stroke-dashoffset 1s ease"/>
+          <text x="70" y="66" text-anchor="middle" fill="#F0E6D0" font-size="14" font-weight="bold" font-family="Syne" id="donutPct">–</text>
+          <text x="70" y="83" text-anchor="middle" fill="#8896aa" font-size="9" font-family="Space Mono">couvert</text>
+        </svg>
+        <div class="donut-legend">
+          <span><i class="dot" style="background:var(--green)"></i>Couvert PV</span>
+          <span><i class="dot" style="background:rgba(255,255,255,0.1)"></i>Réseau</span>
+        </div>
+        <p class="donut-note">Tarif réseau estimé : 0.28 €/kWh</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">📅 Prévision 7 jours (kWh)</div>
+  <div id="dailyRow" class="daily-row"></div>
+
+  <div class="footer-note">
+    Données : <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> (CC BY 4.0) ·
+    Rafraîchissement auto 15 min ·
+    Toit NE 2.4 kWp az.62° + Toit SO 6.4 kWp az.242° — Uccle
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════
+const CFG = {
+  lat: 50.85, lon: 4.35, pr: 0.75,
+  conso: 10.0, tarif: 0.28, alertSeuil: 70,
+  fields: [
+    { name:'NE', azSE:62,  tilt:37, kwp:2.4 },
+    { name:'SO', azSE:242, tilt:37, kwp:6.4 },
+  ],
+  refreshMs: 15 * 60 * 1000
+};
+
+// ═══════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════
+const $  = id => document.getElementById(id);
+const az = a  => a > 180 ? a - 360 : a;
+const pv = (irr, cloud, kwp) => Math.max(0, (irr||0) * (1-(cloud||0)/100) / 1000 * kwp * CFG.pr);
+
+function localDate(d) {
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function icon(c){ return c<20?'☀️':c<50?'🌤️':c<80?'⛅':'☁️'; }
+function setStatus(type, msg) {
+  const b = $('statusBar');
+  if (!type) { b.style.display='none'; return; }
+  b.className = 'status-bar '+type;
+  $('statusMsg').textContent = msg;
+}
+
+// ═══════════════════════════════════════════
+// SVG CHART (no dependencies)
+// ═══════════════════════════════════════════
+function drawSVG(dNE, dSO, dTot, curH) {
+  const W=700, H=220, PL=36, PR=10, PT=12, PB=28;
+  const cW = W-PL-PR, cH = H-PT-PB;
+  const n = dTot.length;
+  const maxV = Math.max(...dTot, 0.01);
+
+  const xPos = i => PL + (i / (n-1)) * cW;
+  const yPos = v => PT + cH - (v / maxV) * cH;
+
+  let bars='', line='', pts='', labels='', gridLines='';
+
+  // grid lines
+  for (let g=0; g<=4; g++) {
+    const y = PT + (g/4)*cH;
+    const val = maxV * (1 - g/4);
+    gridLines += `<line x1="${PL}" y1="${y}" x2="${W-PR}" y2="${y}" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>`;
+    gridLines += `<text x="${PL-4}" y="${y+4}" text-anchor="end" fill="#8896aa" font-size="9" font-family="Space Mono">${val.toFixed(1)}</text>`;
+  }
+
+  // bars
+  const bW = Math.max(2, cW/n - 1.5);
+  for (let i=0; i<n; i++) {
+    const x = PL + (i / n) * cW + 1;
+    const hNE = (dNE[i]/maxV)*cH;
+    const hSO = (dSO[i]/maxV)*cH;
+    bars += `<rect x="${x}" y="${PT+cH-hNE}" width="${bW}" height="${hNE}" fill="rgba(56,189,248,0.55)" rx="2"/>`;
+    bars += `<rect x="${x}" y="${PT+cH-hNE-hSO}" width="${bW}" height="${hSO}" fill="rgba(255,107,0,0.65)" rx="2"/>`;
+  }
+
+  // total line
+  const pts2 = dTot.map((v,i)=>`${xPos(i)},${yPos(v)}`).join(' ');
+  line = `<polyline points="${pts2}" fill="none" stroke="#FFB800" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>`;
+
+  // current hour dot
+  if (curH < n) {
+    const cx = xPos(curH), cy = yPos(dTot[curH]);
+    pts = `<circle cx="${cx}" cy="${cy}" r="5" fill="#FFB800" stroke="#0A0E1A" stroke-width="2"/>`;
+  }
+
+  // x labels (every 3h)
+  for (let i=0; i<n; i+=3) {
+    labels += `<text x="${xPos(i)}" y="${H-6}" text-anchor="middle" fill="#8896aa" font-size="8" font-family="Space Mono">${String(i).padStart(2,'0')}h</text>`;
+  }
+
+  $('svgChart').innerHTML = gridLines + bars + line + pts + labels;
+}
+
+// ═══════════════════════════════════════════
+// FETCH
+// ═══════════════════════════════════════════
+async function fetchField(f) {
+  const url = `https://api.open-meteo.com/v1/forecast`
+    +`?latitude=${CFG.lat}&longitude=${CFG.lon}`
+    +`&hourly=global_tilted_irradiance,cloudcover`
+    +`&tilt=${f.tilt}&azimuth=${az(f.azSE)}`
+    +`&timezone=Europe%2FBrussels&forecast_days=7`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d = await r.json();
+  if (!d?.hourly?.time) throw new Error('Réponse API invalide');
+  return d;
+}
+
+// ═══════════════════════════════════════════
+// MAIN
+// ═══════════════════════════════════════════
+async function loadData() {
+  setStatus('loading','Connexion à Open-Meteo…');
+  try {
+    const [d0, d1] = await Promise.all(CFG.fields.map(fetchField));
+    const times = d0.hourly.time;   // "2026-03-11T08:00"
+    const now   = new Date();
+    const today = localDate(now);
+    const nowH  = now.getHours();
+
+    const ti = times.findIndex(t => t.slice(0,10) === today);
+    if (ti === -1) throw new Error(`Date ${today} absente de l'API`);
+    const ci = ti + nowH;
+
+    const pvNE  = d0.hourly.global_tilted_irradiance.map((v,i) => pv(v, d0.hourly.cloudcover[i], CFG.fields[0].kwp));
+    const pvSO  = d1.hourly.global_tilted_irradiance.map((v,i) => pv(v, d1.hourly.cloudcover[i], CFG.fields[1].kwp));
+    const pvTot = pvNE.map((v,i) => v + pvSO[i]);
+
+    // KPIs
+    $('kpiNow').textContent = pvTot[ci].toFixed(2);
+    $('kpiNE').textContent  = pvNE[ci].toFixed(2);
+    $('kpiSO').textContent  = pvSO[ci].toFixed(2);
+    const kwh = pvTot.slice(ti, ti+24).reduce((a,b)=>a+b, 0);
+    $('kpiDay').textContent = kwh.toFixed(1);
+
+    // Cloud bar
+    const cloud = d0.hourly.cloudcover[ci] || 0;
+    $('cloudPct').textContent  = Math.round(cloud)+'%';
+    $('cloudFill').style.width = cloud+'%';
+
+    // Bilan
+    const surplus = kwh - CFG.conso;
+    const ratio   = Math.min(100, kwh / CFG.conso * 100);
+    const eco     = (Math.min(kwh, CFG.conso) * CFG.tarif).toFixed(2);
+    $('bilanProd').textContent = kwh.toFixed(1)+' kWh';
+    const sEl = $('bilanSurplus');
+    sEl.textContent = (surplus>=0?'+':'')+surplus.toFixed(1)+' kWh';
+    sEl.className   = 'bv '+(surplus>=0?'pos':'neg');
+    const rEl = $('bilanRatio');
+    rEl.textContent = ratio.toFixed(0)+'%';
+    rEl.className   = 'bv '+(ratio>=80?'pos':ratio>=50?'neu':'neg');
+    $('bilanEco').textContent = eco+' €';
+
+    // Donut
+    $('donutArc').setAttribute('stroke-dashoffset', 314-(ratio/100)*314);
+    $('donutPct').textContent = ratio.toFixed(0)+'%';
+
+    // Alerte
+    const clrKwh = d0.hourly.global_tilted_irradiance.slice(ti,ti+24).reduce((a,v)=>a+(v||0)/1000*CFG.fields[0].kwp*CFG.pr,0)
+                 + d1.hourly.global_tilted_irradiance.slice(ti,ti+24).reduce((a,v)=>a+(v||0)/1000*CFG.fields[1].kwp*CFG.pr,0);
+    const perf = clrKwh > 0.5 ? kwh/clrKwh*100 : 100;
+    const ab   = $('alertBanner');
+    if (perf < CFG.alertSeuil && clrKwh > 0.5) {
+      ab.classList.add('visible');
+      $('alertPct').textContent = perf.toFixed(0)+'%';
+      $('alertMsg').textContent = `Production à ${perf.toFixed(0)}% du potentiel (seuil ${CFG.alertSeuil}%). Nuages: ${Math.round(cloud)}%. Potentiel: ${clrKwh.toFixed(1)} kWh, Estimé: ${kwh.toFixed(1)} kWh.`;
+    } else { ab.classList.remove('visible'); }
+
+    // SVG chart
+    drawSVG(pvNE.slice(ti,ti+24), pvSO.slice(ti,ti+24), pvTot.slice(ti,ti+24), nowH);
+
+    // 7-day forecast
+    const byD = {};
+    times.forEach((t,i)=>{
+      const d = t.slice(0,10);
+      if (!byD[d]) byD[d] = {kwh:0, clr:0, clouds:[]};
+      byD[d].kwh  += pvTot[i];
+      byD[d].clr  += (d0.hourly.global_tilted_irradiance[i]||0)/1000*CFG.fields[0].kwp*CFG.pr
+                   + (d1.hourly.global_tilted_irradiance[i]||0)/1000*CFG.fields[1].kwp*CFG.pr;
+      byD[d].clouds.push(d0.hourly.cloudcover[i]||0);
+    });
+    const DN = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+    $('dailyRow').innerHTML = Object.entries(byD).slice(0,7).map(([date,data],i)=>{
+      const dd  = new Date(date+'T12:00:00');
+      const nm  = i===0 ? '⬤ AUJ.' : DN[dd.getDay()].toUpperCase();
+      const dt  = date.slice(5).replace('-','/');
+      const avg = data.clouds.reduce((a,b)=>a+b,0)/data.clouds.length;
+      const bad = data.clr>0.5 && data.kwh/data.clr*100 < CFG.alertSeuil;
+      return `<div class="day-card${i===0?' today':''}${bad?' bad':''}">
+        <div class="dn">${nm}<br>${dt}</div>
+        <div class="di">${icon(avg)}</div>
+        <div class="dv${bad?' bad':''}">${data.kwh.toFixed(1)}</div>
+        <div class="ds">kWh${bad?' ⚠️':''}</div>
+      </div>`;
+    }).join('');
+
+    $('lastUpdate').textContent = `MAJ ${now.toLocaleTimeString('fr-BE',{hour:'2-digit',minute:'2-digit'})}`;
+    setStatus('','');
+
+  } catch(e) {
+    console.error('[PVMonitor]', e);
+    setStatus('error', '⚠️ '+e.message+' — Rechargez la page.');
+  }
+}
+
+loadData();
+setInterval(loadData, CFG.refreshMs);
+</script>
+</body>
+</html>
